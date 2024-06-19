@@ -1,0 +1,547 @@
+---
+title: "Anàlisi del preu de lelectricitat"
+author: "Carlos Romero Matarin"
+date: "`r Sys.Date()`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    css: "personalizar.css"
+    theme: cosmo
+#runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(plotly)
+library(tidyverse)
+library(readxl)
+library(knitr)
+
+# Datos desde archivo Excel
+datos <- read_excel("Dades_Final.xlsx")
+
+# Procesamos los datos
+datos <- datos %>%
+  mutate(fecha = as.Date(fecha)) %>%
+  filter(fecha >= as.Date("2021-01-01") & fecha <= as.Date("2023-12-31"))
+
+```
+
+```{r include=FALSE}
+#Imprimir el Nombre de las columnas
+colnames(datos)
+```
+
+
+introducció {data-icon="fa-signal"}
+===================================== 
+
+## Column {data-width=750}
+
+### Explicación del Conjunto de Datos
+
+Aquest dashboard vol analitzar el mercat energètic, enfocant-se a com les condicions meteorològiques i els diferents tipus de generació d'energia afecten els preus de l'electricitat. Podem veure que el conjunt de dades és extremadament rellevant ja que les Dades són actuals dels anys passats: 2021, 2022 i 2023 i s'inclouen dades de preus de l'electricitat, la generació i informació meteorològica detallada.
+
+En conclusió, això facilita una anàlisi en temps real de les tendències i proporciona una base sòlida per preveure futurs canvis i adaptacions necessàries al sector energètic.
+
+#### Objectius
+Els objectius principals del dashboard són:
+
+- Com afecten les condicions meteorològiques els preus de
+l'electricitat?, és a dir examinar com els canvis climàtics
+afecten els preus del mercat.
+
+- Hi ha una correlació entre el tipus de generació d'energia i el preu
+de l'electricitat?, és a dir l'objectiu descobrir com la diversificació de fonts de generació d'energia afecta la variabilitat dels preus.
+
+- És possible reconèixer patrons temporals (diaris, mensuals,
+anuals) en l'ús i la producció d'energia i similitud dels preus?, és a dir l'objectiu és identificar tendències estacionals o anomalies la
+producció d'energia.
+
+### Diccionari de les variables
+
+```{r include=TRUE}
+# Crear el data frame con el diccionario de datos
+diccionario_datos <- data.frame(
+  Variable = c("Any", "Mes", "Dia", "Data", "tmed (Temperatura Mitjana)", 
+               "prec (Precipitació)", "tmin (Temperatura Mínima)", "tmax (Temperatura Màxima)", 
+               "Hidràulica", "Turbinació bombament", "Nuclear", "Carbó", 
+               "Fuel + Gas", "Motors dièsel", "Turbina de gas", "Turbina de vapor", 
+               "Cicle combinat", "Hidroeòlica", "Eòlica", "Solar fotovoltaica", 
+               "Solar tèrmica", "Altres renovables", "Cogeneració", "Residus no renovables", 
+               "Residus renovables", "Generació total", "Preu"),
+  Significat = c("Any en què es van registrar les dades", "Mes de l'any de les dades registrades", 
+                 "Dia del mes corresponent a cada registre", "Data completa de cada registre en format YYYY-MM-DD", 
+                 "Temperatura mitjana diària en graus Celsius", "Quantitat de precipitació registrada en mil·límetres", 
+                 "Temperatura mínima aconseguida cada dia en graus Celsius", "Temperatura màxima registrada cada dia", 
+                 "Energia generada per fonts hidràuliques", "Energia generada per turbinació de bombament", 
+                 "Energia produïda per plantes nuclears", "Energia generada usant carbó", 
+                 "Energia generada per combustió de fuel i gas", "Energia generada per motors dièsel", 
+                 "Producció energètica mitjançant turbines de gas", "Producció energètica mitjançant turbines de vapor", 
+                 "Energia generada per plantes de cicle combinat", "Energia generada combinant recursos hídrics i eòlics", 
+                 "Energia produïda per turbines eòliques", "Energia generada per panells solars fotovoltaics", 
+                 "Producció energètica mitjançant tecnologia solar tèrmica", "Energia produïda per altres fonts renovables", 
+                 "Energia generada per sistemes de cogeneració", "Energia produïda a partir de residus no renovables", 
+                 "Energia generada a partir de residus renovables", "Suma total d’energia generada", 
+                 "Preu mitjana diària de l'electricitat en euros per MWh"),
+  Unitat = c("Any", "Mes", "Dia", "Data", "ºC", "mm", "ºC", "ºC", "GWh", "GWh", "GWh", "GWh", 
+             "GWh", "GWh", "GWh", "GWh", "GWh", "GWh", "GWh", "GWh", "GWh", "GWh", "GWh", "GWh", 
+             "GWh", "GWh", "€/MWh"),
+  `Tipus de Dada` = c("Discreta", "Discreta", "Discreta", "Discreta", "Contínua", "Contínua", "Contínua", 
+                      "Contínua", "Contínua", "Contínua", "Contínua", "Contínua", "Contínua", "Contínua", 
+                      "Contínua", "Contínua", "Contínua", "Contínua", "Contínua", "Contínua", "Contínua", 
+                      "Contínua", "Contínua", "Contínua", "Contínua", "Contínua", "Contínua"),
+  Classificació = c("Dimensió", "Dimensió", "Dimensió", "Dimensió", "Variable de Estudi", "Variable de Estudi", 
+                    "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", 
+                    "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", 
+                    "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", 
+                    "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", 
+                    "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", "Variable de Estudi", 
+                    "Variable Principal de Estudi")
+)
+
+# Mostrar la tabla
+kable(diccionario_datos, col.names = c("Variable", "Significat", "Unitat", "Tipus de Dada", "Classificació"), 
+      caption = "Diccionario de Datos del Análisis del Mercado Energético")
+```
+
+
+<!-- ## Column {.panel data-width=250} -->
+
+<!-- ### Filtres {.panel} -->
+<!-- ```{r} -->
+<!-- # Definir tipos de energías -->
+<!-- energias_renovables <- c("Hidráulica", "Hidroeólica", "Eólica",  -->
+<!--                          "Solar fotovoltaica", "Solar térmica", "Otras renovables", "Residuos renovables") -->
+<!-- energias_no_renovables <- c("Turbinación bombeo", "Carbón",  -->
+<!--                             "Fuel + Gas", "Motores diésel", "Turbina de gas",  -->
+<!--                             "Turbina de vapor", "Ciclo combinado", "Cogeneración", "Residuos no renovables") -->
+<!-- energia_nuclear <- c("Nuclear") -->
+
+<!-- energias <- c(energias_renovables, energias_no_renovables, energia_nuclear) -->
+
+<!-- checkboxGroupInput( -->
+<!--   "year", label = "Seleccioneu els anys:", -->
+<!--   choices = unique(datos$Año), selected = unique(datos$Año) -->
+<!-- ) -->
+
+<!-- checkboxGroupInput( -->
+<!--   "estacion", label = "Seleccioneu les estacions:", -->
+<!--   choices = c("Invierno", "Primavera", "Verano", "Otoño"), selected = c("Invierno", "Primavera", "Verano", "Otoño") -->
+<!-- ) -->
+
+<!-- checkboxGroupInput( -->
+<!--   "tipo_generacion", label = "Seleccioneu el tipus de generació d'energia:", -->
+<!--   choices = energias, selected = energias -->
+<!-- ) -->
+
+<!-- ``` -->
+
+Taula de dades {data-icon="fa-table"}
+=====================================
+
+## Column {data-width=800}
+
+### Dades del Mercat Energètic
+
+```{r include=TRUE}
+DT::datatable(datos, options = list(pageLength = 10))
+```
+
+Anàlisi General {data-icon="fa-area-chart"}
+=====================================    
+
+## Column {data-width="600"}
+
+### Preus de l'Electricitat
+
+```{r include=TRUE}
+plot_ly(datos, x = ~fecha, y = ~Precio, type = 'scatter', mode = 'lines') %>%
+    layout(title = "Preus de l'Electricitat a la Llarg del Temps",
+           xaxis = list(title = "Fecha"),
+           yaxis = list(title = "Precio (€)"))
+```
+
+### Variacions Diàries dels Preus
+
+```{r include=TRUE}
+plot_ly(datos, x = ~Mes, y = ~Dia, z = ~Precio, type = 'heatmap', colors = colorRamp(c("blue", "yellow", "red"))) %>%
+    layout(title = "Variacions Diàries dels Preus de l'Electricitat",
+           xaxis = list(title = "Mes", dtick = 1),
+           yaxis = list(title = "Día", dtick = 1))
+
+```
+
+## Column {data-width="400"}
+
+### Preus de l'Electricitat per Mes
+```{r}
+monthly_prices <- datos %>%
+  group_by(Mes) %>%
+  summarise(Precio = mean(Precio, na.rm = TRUE))
+
+plot_ly(monthly_prices, x = ~Mes, y = ~Precio, type = 'scatter', mode = 'lines+markers') %>%
+  layout(
+    title = "Preus de l'Electricitat per Mes",
+    xaxis = list(title = 'Mes'),
+    yaxis = list(title = 'Preu (€)')
+  )
+
+```
+
+### Preus de l'Electricitat per Estació i Any
+
+```{r}
+# Añadir estaciones
+datos <- datos %>%
+  mutate(
+    Estacion = case_when(
+      Mes %in% c(12, 1, 2) ~ "Hivern",
+      Mes %in% c(3, 4, 5) ~ "Primavera",
+      Mes %in% c(6, 7, 8) ~ "Estiu",
+      Mes %in% c(9, 10, 11) ~ "Tardor"
+    )
+  )
+
+# Agrupar por estación y año
+seasonal_yearly_prices <- datos %>%
+  group_by(Año, Estacion) %>%
+  summarise(Precio = mean(Precio, na.rm = TRUE)) %>%
+  ungroup()
+
+# Crear el gráfico
+plot_ly(seasonal_yearly_prices, x = ~Estacion, y = ~Precio, color = ~factor(Año), type = 'scatter', mode = 'lines+markers') %>%
+  layout(
+    title = "Preus de l'Electricitat per Estació i Any",
+    xaxis = list(title = 'Estació'),
+    yaxis = list(title = 'Pru (€)')
+  )
+
+```
+
+### Explicació
+
+En Aquesta secció podem veure una visió del mercat elèctric global. Els gràfics mostren com han canviat els preus de l'electricitat al llarg del temps, destacant grans variacions. Les variacions de preus diàries i mensuals mostren patrons i pics de demanda estacionals que poden estar relacionats amb esdeveniments o canvis a l'oferta. La comparació de preus per estacions i anys demostra com els factors estacionals influeixen en els preus, cosa que suggereix que en èpoques de més consum, hi pot haver preus més alts.
+
+Anàlisi climàtica {data-icon="fa-cloud"}
+=====================================    
+
+## Column {data-width="450"}
+
+### Preus vs Temperatura Mitjana
+```{r include=TRUE}
+# Modelo lineal
+modelo <- lm(Precio ~ tmed, data = datos)
+
+# Valores del modelo
+datos$prediccion <- predict(modelo)
+
+# Crear el gráfico de dispersión con la línea de regresión
+plot_ly(datos, x = ~tmed, y = ~Precio, type = 'scatter', mode = 'markers', name = 'Datos') %>%
+    add_lines(x = ~tmed, y = ~prediccion, name = 'Línea de Regresión', line = list(color = 'red')) %>%
+    layout(title = "Relació entre Temperatura Mitjana i Preu de l'Electricitat",
+           xaxis = list(title = "Temperatura Mitjana (°C)"),
+           yaxis = list(title = "Preu (€)"))
+
+```
+
+### Preus vs Precipitació
+```{r include=TRUE}
+# Modelo lineal
+modelo_prec <- lm(Precio ~ prec, data = datos)
+
+# Valores ajustados
+datos$prediccion_prec <- predict(modelo_prec)
+
+# Crear el gráfico de dispersión con la línea de regresión
+plot_ly(datos, x = ~prec, y = ~Precio, type = 'scatter', mode = 'markers', name = 'Datos') %>%
+    add_lines(x = ~prec, y = ~prediccion_prec, name = 'Línea de Regresión', line = list(color = 'red')) %>%
+    layout(title = "Relació entre Precipitació i Preu de l'Electricitat",
+           xaxis = list(title = "Precipitació (mm)"),
+           yaxis = list(title = "Preu (€)"))
+
+```
+
+## Column {data-width="550"}
+
+### Variabilitat Estacional de Preus i Temperatures
+```{r include=TRUE}
+seasonal_data <- datos %>%
+  group_by(Mes) %>%
+  summarise(
+    Precio = mean(Precio, na.rm = TRUE),
+    tmed = mean(tmed, na.rm = TRUE)
+  )
+
+plot_ly(seasonal_data, x = ~Mes) %>%
+  add_lines(y = ~Precio, name = 'Preu', yaxis = 'y1') %>%
+  add_lines(y = ~tmed, name = 'Temperatura Mitjana', yaxis = 'y2') %>%
+  layout(
+    title = 'Variabilitat Estacional de Preus i Temperatures',
+    xaxis = list(title = 'Mes'),
+    yaxis = list(title = 'Preu (€)', side = 'left', overlaying = 'y2'),
+    yaxis2 = list(title = 'Temperatura Mitjana (°C)', side = 'right')
+  )
+
+```
+
+### Variabilitat Estacional de Preus i Temperatures per Estació i Any
+```{r}
+# Añadir estaciones
+datos <- datos %>%
+  mutate(
+    Estacion = case_when(
+      Mes %in% c(12, 1, 2) ~ "Hivern",
+      Mes %in% c(3, 4, 5) ~ "Primavera",
+      Mes %in% c(6, 7, 8) ~ "Estiu",
+      Mes %in% c(9, 10, 11) ~ "Tardor"
+    )
+  )
+
+# Agrupar por estación y año
+seasonal_yearly_data <- datos %>%
+  group_by(Año, Estacion) %>%
+  summarise(
+    Precio = mean(Precio, na.rm = TRUE),
+    tmed = mean(tmed, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Crear el gráfico con etiquetas combinadas
+plot_ly() %>%
+  add_lines(data = seasonal_yearly_data, x = ~Estacion, y = ~Precio, color = ~interaction(Año, "Precio"), name = ~paste(Año, "Preu"), yaxis = 'y1') %>%
+  add_lines(data = seasonal_yearly_data, x = ~Estacion, y = ~tmed, color = ~interaction(Año, "Temperatura"), name = ~paste(Año, "Temperatura"), yaxis = 'y2') %>%
+  layout(
+    title = 'Variabilitat Estacional de Preus i Temperatures per Estació i Any',
+    xaxis = list(title = 'Estació'),
+    yaxis = list(title = 'Preu (€)', side = 'left'),
+    yaxis2 = list(title = 'Temperatura Mitjana (°C)', side = 'right', overlaying = 'y')
+  )
+
+```
+
+### Explicació
+En aquesta secció podem veure la influència de les condicions climàtiques en el preu del‟electricitat. Els gràfics de dispersió entre la temperatura mitjana i el preu i entre la precipitació i el preu ens mostren la relació entre aquestes variables. Podem observar que, generalment, les altes temperatures tendeixen a coincidir amb preus més alts, cosa que podria estar relacionada amb un ús més gran de sistemes de refrigeració. Per un altre costar, podem veure que la precipitació té una relació menys clara amb els preus. I cal dir que la variabilitat estacional dels preus i les temperatures mostra com els canvis climàtics al llarg de l'any afecten els preus de l'electricitat i proporcionen informació valuosa per a la planificació i la gestió de la demanda energètica.
+
+Generació {data-icon="fa-industry"}
+=====================================    
+
+## Column {data-width="650"}
+
+### Generació d'energia per dia
+
+```{r include=TRUE}
+plot_ly(datos, x = ~fecha) %>%
+    add_bars(y = ~Hidráulica, name = 'Hidráulica') %>%
+    add_bars(y = ~`Turbinación bombeo`, name = 'Turbinación bombeo') %>%
+    add_bars(y = ~Nuclear, name = 'Nuclear') %>%
+    add_bars(y = ~Carbón, name = 'Carbón') %>%
+    add_bars(y = ~`Fuel + Gas`, name = 'Fuel + Gas') %>%
+    add_bars(y = ~`Motores diésel`, name = 'Motores diésel') %>%
+    add_bars(y = ~`Turbina de gas`, name = 'Turbina de gas') %>%
+    add_bars(y = ~`Turbina de vapor`, name = 'Turbina de vapor') %>%
+    add_bars(y = ~`Ciclo combinado`, name = 'Ciclo combinado') %>%
+    add_bars(y = ~`Hidroeólica`, name = 'Hidroeólica') %>%
+    add_bars(y = ~Eólica, name = 'Eólica') %>%
+    add_bars(y = ~`Solar fotovoltaica`, name = 'Solar fotovoltaica') %>%
+    add_bars(y = ~`Solar térmica`, name = 'Solar térmica') %>%
+    add_bars(y = ~`Otras renovables`, name = 'Otras renovables') %>%
+    add_bars(y = ~Cogeneración, name = 'Cogeneración') %>%
+    add_bars(y = ~`Residuos no renovables`, name = 'Residuos no renovables') %>%
+    add_bars(y = ~`Residuos renovables`, name = 'Residuos renovables') %>%
+    layout(barmode = 'stack',
+           title = "Generació d'energia per dia",
+           xaxis = list(title = 'Data'),
+           yaxis = list(title = 'Generació (GWh)'))
+```
+
+### Gràfic de Mapa de Calor per a la Generació Total d'Energia per Mes i Dia
+
+```{r include=TRUE}
+plot_ly(datos, x = ~Mes, y = ~Dia, z = ~`Generación total`, type = 'heatmap', colors = colorRamp(c("blue", "yellow", "red"))) %>%
+    layout(title = "Generació Total d'Energia per Mes i Dia",
+           xaxis = list(title = "Mes", dtick = 1),
+           yaxis = list(title = "Día", dtick = 1))
+```
+
+## Column {data-width="350"}
+
+### Composició d'Energia
+
+```{r include=TRUE}
+ total_generacion <- datos %>%
+    summarise(across(starts_with("Hidráulica"):starts_with("Residuos renovables"), sum, na.rm = TRUE)) %>%
+    pivot_longer(cols = everything(), names_to = "Tipo", values_to = "Generació")
+
+  plot_ly(total_generacion, labels = ~Tipo, values = ~Generació, type = 'pie') %>%
+    layout(title = "Composició Total de la Generació d'Energia")
+```
+
+<!-- ### Gràfic de Barres per a la Generació Total d'Energia per Tipus -->
+
+<!-- ```{r} -->
+<!-- total_generacion <- datos %>% -->
+<!--   summarise( -->
+<!--     Hidráulica = sum(Hidráulica, na.rm = TRUE), -->
+<!--     `Turbinación bombeo` = sum(`Turbinación bombeo`, na.rm = TRUE), -->
+<!--     Nuclear = sum(Nuclear, na.rm = TRUE), -->
+<!--     Carbón = sum(Carbón, na.rm = TRUE), -->
+<!--     `Fuel + Gas` = sum(`Fuel + Gas`, na.rm = TRUE), -->
+<!--     `Motores diésel` = sum(`Motores diésel`, na.rm = TRUE), -->
+<!--     `Turbina de gas` = sum(`Turbina de gas`, na.rm = TRUE), -->
+<!--     `Turbina de vapor` = sum(`Turbina de vapor`, na.rm = TRUE), -->
+<!--     `Ciclo combinado` = sum(`Ciclo combinado`, na.rm = TRUE), -->
+<!--     Hidroeólica = sum(Hidroeólica, na.rm = TRUE), -->
+<!--     Eólica = sum(Eólica, na.rm = TRUE), -->
+<!--     `Solar fotovoltaica` = sum(`Solar fotovoltaica`, na.rm = TRUE), -->
+<!--     `Solar térmica` = sum(`Solar térmica`, na.rm = TRUE), -->
+<!--     `Otras renovables` = sum(`Otras renovables`, na.rm = TRUE), -->
+<!--     Cogeneración = sum(Cogeneración, na.rm = TRUE), -->
+<!--     `Residuos no renovables` = sum(`Residuos no renovables`, na.rm = TRUE), -->
+<!--     `Residuos renovables` = sum(`Residuos renovables`, na.rm = TRUE) -->
+<!--   ) %>% -->
+<!--   pivot_longer(cols = everything(), names_to = "Tipo", values_to = "Generación") -->
+
+<!-- # Crear el gráfico de barras -->
+<!-- plot_ly(total_generacion, x = ~Tipo, y = ~Generación, type = 'bar', name = 'Generación') %>% -->
+<!--     layout(title = "Generació Total d'Energia per Tipus", -->
+<!--            xaxis = list(title = "Tipus d'Energia"), -->
+<!--            yaxis = list(title = "Generació Total (GWh)"), -->
+<!--            margin = list(b = 100), -->
+<!--            showlegend = FALSE) -->
+<!-- ``` -->
+
+### Explicació
+Podem fer una anàlisi detallada de la generació d'energia, podem veure que els gràfics ajuden a identificar tendències i canvis en la producció en mostrar l'evolució diària de la generació total d'energia. La composició total de la generació per tipus d'energia destaca la varietat de fonts d'energia utilitzades i la seva contribució. En el mapa de calor podem facilitar la identificació de patrons i l'optimització de la producció d'energia.
+
+Podem veure la importància de l'energia hidroelèctrica augmenta a la primavera, mentre que l'energia eòlica i solar fotovoltaica es destaquen durant els mesos estivals. La segona font d'energia més utilitzada, l'energia nuclear, proporciona una producció constant tot any. A més, el mapa de calor ajuda a la gestió eficient dels recursos en identificar els dies que generen més energia.
+
+Anàlisi Energia {data-icon="fa-battery-three-quarters"}
+=====================================    
+
+## Column {data-width="850"}
+
+### Tipus d'Energia Renovables, No Renovables i Nuclear vs Preu
+```{r include=TRUE}
+# Definir tipos de energías renovables, no renovables y nuclear
+energias_renovables <- c("Hidráulica", "Hidroeólica", "Eólica", 
+                         "Solar fotovoltaica", "Solar térmica", "Otras renovables", "Residuos renovables")
+energias_no_renovables <- c("Turbinación bombeo", "Carbón", 
+                            "Fuel + Gas", "Motores diésel", "Turbina de gas", 
+                            "Turbina de vapor", "Ciclo combinado", "Cogeneración", "Residuos no renovables")
+energia_nuclear <- c("Nuclear")
+
+# Función para crear gráficos con líneas de regresión y leyendas claras
+crear_grafico_energia <- function(data, energy_types, title, color) {
+  data_filtered <- data %>%
+    select(Precio, all_of(energy_types)) %>%
+    pivot_longer(cols = all_of(energy_types), names_to = "Tipo_Energia", values_to = "Generacion")
+  
+  modelo <- lm(Precio ~ Generacion, data = data_filtered)
+  data_filtered$prediccion <- predict(modelo)
+  
+  plot_ly(data_filtered, x = ~Generacion, y = ~Precio, type = 'scatter', mode = 'markers', name = paste('Datos -', title), marker = list(color = color)) %>%
+    add_lines(x = ~Generacion, y = ~prediccion, name = paste('Línea de Regresión -', title), line = list(color = 'red')) %>%
+    layout(
+      xaxis = list(title = "Generació (GWh)"),
+      yaxis = list(title = "Preu (€)"),
+      showlegend = TRUE,
+      annotations = list(
+        x = 0.5,
+        y = 1.1,
+        text = title,
+        showarrow = FALSE,
+        xref = 'paper',
+        yref = 'paper',
+        font = list(size = 16)
+      )
+    )
+}
+
+# Crear gráficos para cada tipo de energía
+plot_renovables <- crear_grafico_energia(datos, energias_renovables, "EEnergies Renovables", "blue")
+plot_no_renovables <- crear_grafico_energia(datos, energias_no_renovables, "Energies No Renovables", "green")
+plot_nuclear <- crear_grafico_energia(datos, energia_nuclear, "Energia Nuclear", "purple")
+
+# Crear el subplot con los tres gráficos
+subplot(
+  plot_renovables, plot_no_renovables, plot_nuclear,
+  nrows = 1, shareX = FALSE, shareY = FALSE,
+  titleX = TRUE, titleY = TRUE
+) %>%
+  layout(
+    title = "Comparació de Preus entre Energies Renovables, No Renovables i Nuclear",
+    margin = list(t = 50)
+  )
+```
+
+### Producció d'energia per mes
+```{r include=TRUE}
+monthly_production <- datos %>%
+  group_by(Mes) %>%
+  summarise(across(starts_with("Hidráulica"):starts_with("Residuos renovables"), sum, na.rm = TRUE)) %>%
+  pivot_longer(cols = -Mes, names_to = "Tipo", values_to = "Generació")
+
+plot_ly(monthly_production, x = ~Mes, y = ~Generació, color = ~Tipo, type = 'bar') %>%
+  layout(title = "Producció d'energia per mes",
+         xaxis = list(title = 'Mes'),
+         yaxis = list(title = 'Generació (GWh)'))
+```
+
+## Column {data-width="150"}
+
+### Explicació
+En aquesta secció es compara els preus de l'electricitat i diversos tipus de generació d'energia. En els gràfics de dispersió amb línies de regressió per a energies renovables, no renovables i nuclears podem veure com afecta la generació d'energia als preus. 
+
+Es pot observar que les energies renovables, tot i tenir una producció menor en comparació amb les no renovables, solen tenir una relació menys marcada amb els preus, cosa que pot indicar una menor inestabilitat. 
+
+Per un altre costat, la relació entre preus i energia nuclear és més estable. Després el gràfic de barres mensual de producció d'energia ens mostra les variacions en la generació d'energia de cada tipus al llarg de l'any, la qual cosa proporciona una base per a l'optimització de la barreja d'energia i la gestió de recursos.
+
+Conclusions {data-icon="fa-file-text"}
+=====================================   
+
+## Column {data-width="700"}
+
+### Conclusions
+Per concloure, podem respondre les preguntes formulares en els objectius:
+
+- Com afecten les condicions meteorològiques els preus de l'electricitat?
+
+Podem veure que el clima té un impacte significatiu en els preus de l'electricitat. Les variables com la temperatura mitjana i el preu de l'electricitat estan clarament correlacionats, segons la nostra anàlisi. Cal destacar que els preus de l'electricitat augmenten durant les altes temperatures, especialment durant l'estiu. A això se li pot atribuir augment de la demanda energètica per a la refrigeració. Per un altre costar, sembla que la precipitació té un impacte menor i menys directe als preus. No obstant això, la disponibilitat de fonts hidroelèctriques pot variar en funció de les precipitacions, cosa que afecta la generació i, per tant, els costos.
+
+- Hi ha una correlació entre el tipus de generació d'energia i el preu de l'electricitat?
+
+Podem veure que la variabilitat dels preus de l'electricitat està influenciada per la diversificació de les fonts de generació d'energia. Segons les nostres dades, les fonts d'energia renovables, com les eòliques i solars, tenen una relació menor amb els costos de l'electricitat, possiblement a causa de la menor volatilitat que tenen en comparació amb les fonts no renovables. A causa de la seva dependència dels costos de combustibles fòssils i la resposta a la demanda, les fonts d'energia no renovables, com el gas i el carbó, presenten una correlació més forta amb els increments de preus. Cal dir que l'energia nuclear es produeix contínuament i no depèn de les condicions climàtiques, presenta una relació econòmica més estable.
+
+- És possible reconèixer patrons temporals (diaris, mensuals, anuals) en l'ús i la producció d'energia i similitud dels preus?
+
+Podem veure que hi ha patrons temporals evidents en l'ús i la producció d'energia, així com els preus de l'energia, es revelen mitjançant l'anàlisi de dades diàries, mensuals i anuals. És possible identificar tendències estacionals, com els pics de preus els mesos d'estiu i hivern, que coincideixen amb els períodes en què cal més energia per a la refrigeració i la calefacció, respectivament. A més, en les nostres dades podem veure anomalies infreqüents que podrien estar relacionades amb esdeveniments particulars, com ara fenòmens climàtics extrems o canvis en la disponibilitat de fonts d'energia.
+
+Per concloure, podem veure que els estudis ofereixen una comprensió completa de com els canvis climàtics i la diversificació de les fonts de generació d'energia afecten els preus de l'electricitat. A més, ens facilita la identificació de patrons temporals essencials per a la planificació i la gestió eficients dels recursos energètics.
+
+## Column {data-width="300"}
+
+### Fonts de dades diverses i pertinents
+Tres fonts principals són essencials per obtenir una visió completa i precisa
+del mercat energètic:
+
+- OMIE (Operador del Mercat Ibèric d'Electricitat): Proporciona
+informació sobre els preus horaris del mercat diari i infradiari. Aquestes
+dades són essencials per analitzar les fluctuacions del mercat i
+comprendre com els preus canvien amb els canvis a l'oferta i la
+demanda.
+
+- L'Agència Estatal de Meteorologia (AEMET): Proporciona informació
+detallada sobre les condicions meteorològiques, com temperatura,
+humitat, velocitat del vent, radiació solar, etc. Aquests elements són
+essencials per estudiar com el clima afecta el consum i la generació
+d'energia.
+
+- Xarxa Elèctrica d'Espanya (REE): Proporciona informació sobre la
+producció d'energia organitzada per tipus de tecnologia (hidràulica,
+eòlica, solar, tèrmica...). Aquestes dades són essencials per avaluar
+com la barreja de generació afecta el mercat i per investigar l'impacte
+de les energies renovables en l'estabilitat i la sostenibilitat del sistema
+energètic.
