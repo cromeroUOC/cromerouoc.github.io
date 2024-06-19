@@ -1,5 +1,5 @@
 ---
-title: "Anàlisi del preu de lelectricitat"
+title: "Anàlisi del preu de l'electricitat"
 author: "Carlos Romero Matarin"
 date: "`r Sys.Date()`"
 output: 
